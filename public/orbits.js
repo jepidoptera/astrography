@@ -2,8 +2,9 @@ var ctx;
 var canvas;
 const astros = [];
 var zoomscale = 1
-var gravitationalConstant = 10
+var gravitationalConstant = .01
 var timestep = .1
+var paused = false
 
 class Astro {
     constructor(x, y, radius, color = 'white', movementVector = {x: 0, y: 0}) {
@@ -14,6 +15,7 @@ class Astro {
         this.surface = radius ** 2
         this.mass = radius ** 3
         this.movementVector = movementVector
+        this.lastDraw = Date.now() / 10
     }
     attractAll() {
         for (let n in astros) {
@@ -22,8 +24,8 @@ class Astro {
             let xdist = astros[n].x - this.x
             let ydist = astros[n].y - this.y
             let dist = xdist ** 2 + ydist ** 2
-            astros[n].movementVector.x -= Math.sign(xdist) * this.mass / astros[n].mass / dist * gravitationalConstant * timestep
-            astros[n].movementVector.y -= Math.sign(ydist) * this.mass / astros[n].mass / dist * gravitationalConstant * timestep
+            astros[n].movementVector.x -= Math.sign(xdist) * this.mass / dist * gravitationalConstant * timestep
+            astros[n].movementVector.y -= Math.sign(ydist) * this.mass / dist * gravitationalConstant * timestep
             if (dist < this.surface + astros[n].surface) {
                 // collide
                 console.log('collision')
@@ -31,6 +33,9 @@ class Astro {
         }
     }
     move() {
+        timestep = Date.now() / 10 - this.lastDraw;
+        this.lastDraw = Date.now() / 10;
+
         this.x += this.movementVector.x * timestep
         this.y += this.movementVector.y * timestep
     }
@@ -47,10 +52,13 @@ $(document).ready(function() {
     astros.push(new Astro(0, 0, 50, 'yellow', {x: 0, y: 0}))
     astros.push(new Astro(200, 200, 10, 'green', {x: -1, y: 1.5}))
     // astros.push(new Astro(-100, -100, 10, 'green', {x: 5, y: -5}))
+    window.requestAnimationFrame(drawCanvas)
     setInterval(() => {
-        drawCanvas();
-    }, timestep * 10);
-
+        for (let n in astros) {
+            astros[n].move()
+            astros[n].attractAll()
+        }    
+    }, 1);
 
     // mouse events
     var leftButtonDown = false;
@@ -86,8 +94,8 @@ $(document).ready(function() {
         if (mouseWas) {
             e.delta = {x: e.offsetX - mouseWas.x, y: e.offsetY - mouseWas.y}
             mouseWas = {x: e.offsetX, y: e.offsetY}
-        }
-        console.log('mouse moved')
+        } 
+        // console.log('mouse moved')
         if (middleButtonDown) {
             canvas.origin.x += e.delta.x;
             canvas.origin.y += e.delta.y;
@@ -102,15 +110,14 @@ function drawCanvas() {
         canvas.origin.x += canvas.drift.x
         canvas.origin.y += canvas.drift.y
     }
-    canvas.origin = {x: astros[0].x + canvas.width / 2, y: astros[0].y + canvas.height / 2}
-    // ctx.fillRect(0, 0, canvas.width, canvas.height)
+    // canvas.origin = {x: astros[0].x + canvas.width / 2, y: astros[0].y + canvas.height / 2}
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
     for (let n in astros) {
-    }
-    for (let n in astros) {
-        astros[n].move()
         astros[n].draw()
-        astros[n].attractAll()
-    }
+    }    
+
+    window.requestAnimationFrame(drawCanvas)
 }
 
 let origin = {x: $(canvas).width() / 2, y: $(canvas).height / 2}
